@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="360" viewBox="0 0 1280 360">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#05060f"/><stop offset="1" stop-color="#0d0b22"/>
+    </linearGradient>
+    <linearGradient id="neon" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22d3ee"/><stop offset=".5" stop-color="#a855f7"/><stop offset="1" stop-color="#f472b6"/>
+    </linearGradient>
+    <radialGradient id="o1"><stop offset="0" stop-color="#22d3ee" stop-opacity=".45"/><stop offset="1" stop-color="#22d3ee" stop-opacity="0"/></radialGradient>
+    <radialGradient id="o2"><stop offset="0" stop-color="#a855f7" stop-opacity=".45"/><stop offset="1" stop-color="#a855f7" stop-opacity="0"/></radialGradient>
+    <radialGradient id="o3"><stop offset="0" stop-color="#f472b6" stop-opacity=".35"/><stop offset="1" stop-color="#f472b6" stop-opacity="0"/></radialGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#94a3ff" stroke-opacity=".07"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="360" rx="24" fill="url(#bg)"/>
+  <rect width="1280" height="360" rx="24" fill="url(#grid)"/>
+  <circle cx="160" cy="40" r="260" fill="url(#o1)"/>
+  <circle cx="1120" cy="300" r="300" fill="url(#o2)"/>
+  <circle cx="700" cy="380" r="220" fill="url(#o3)"/>
+  <g transform="translate(96 112)">
+    <rect width="96" height="96" rx="24" fill="url(#neon)"/>
+    <text x="48" y="64" font-size="48" text-anchor="middle">🎙️</text>
+  </g>
+  <text x="224" y="168" font-family="Space Grotesk, Segoe UI, Helvetica, Arial, sans-serif" font-size="68" font-weight="700" fill="#e6e9f5">Interview<tspan fill="url(#neon)">AI</tspan></text>
+  <text x="226" y="214" font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="26" fill="#e6e9f5" fill-opacity=".7">AI Interview &amp; Career Simulator — voice mock interviews, instant scoring, progress tracking</text>
+  <g font-family="Segoe UI, Helvetica, Arial, sans-serif" font-size="18" fill="#e6e9f5">
+    <rect x="226" y="248" width="150" height="40" rx="20" fill="#ffffff" fill-opacity=".06" stroke="#ffffff" stroke-opacity=".15"/>
+    <text x="301" y="274" text-anchor="middle">🎙️ Voice + text</text>
+    <rect x="390" y="248" width="196" height="40" rx="20" fill="#ffffff" fill-opacity=".06" stroke="#ffffff" stroke-opacity=".15"/>
+    <text x="488" y="274" text-anchor="middle">🧠 Claude feedback</text>
+    <rect x="600" y="248" width="166" height="40" rx="20" fill="#ffffff" fill-opacity=".06" stroke="#ffffff" stroke-opacity=".15"/>
+    <text x="683" y="274" text-anchor="middle">📊 Report cards</text>
+    <rect x="780" y="248" width="176" height="40" rx="20" fill="#ffffff" fill-opacity=".06" stroke="#ffffff" stroke-opacity=".15"/>
+    <text x="868" y="274" text-anchor="middle">📈 Progress history</text>
+  </g>
+  <rect x="0" y="352" width="1280" height="8" fill="url(#neon)"/>
+</svg>

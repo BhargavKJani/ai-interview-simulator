@@ -1,0 +1,101 @@
+@import "tailwindcss";
+
+:root {
+  --background: #05060f;
+  --foreground: #e6e9f5;
+  --neon-cyan: #22d3ee;
+  --neon-violet: #a855f7;
+  --neon-pink: #f472b6;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-neon-cyan: var(--neon-cyan);
+  --color-neon-violet: var(--neon-violet);
+  --color-neon-pink: var(--neon-pink);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-display: var(--font-display);
+
+  --animate-float: float 9s ease-in-out infinite;
+  --animate-float-slow: float 14s ease-in-out infinite reverse;
+  --animate-fade-up: fade-up 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  --animate-pulse-ring: pulse-ring 1.6s ease-out infinite;
+  --animate-shimmer: shimmer 3s linear infinite;
+  --animate-wave: wave 1s ease-in-out infinite;
+
+  @keyframes float {
+    0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+    50% { transform: translate3d(30px, -40px, 0) scale(1.08); }
+  }
+  @keyframes fade-up {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 rgb(244 114 182 / 0.6); }
+    100% { box-shadow: 0 0 0 18px rgb(244 114 182 / 0); }
+  }
+  @keyframes shimmer {
+    from { background-position: 0% 50%; }
+    to { background-position: 200% 50%; }
+  }
+  @keyframes wave {
+    0%, 100% { transform: scaleY(0.35); }
+    50% { transform: scaleY(1); }
+  }
+}
+
+html {
+  color-scheme: dark;
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Futuristic grid backdrop */
+.bg-grid {
+  background-image:
+    linear-gradient(rgb(148 163 255 / 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(148 163 255 / 0.06) 1px, transparent 1px);
+  background-size: 48px 48px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-white/10 bg-white/[0.04] shadow-[0_8px_40px_-12px_rgb(0_0_0/0.6)] backdrop-blur-xl;
+  }
+  .glass-strong {
+    @apply rounded-2xl border border-white/15 bg-white/[0.07] backdrop-blur-2xl;
+  }
+  .neon-text {
+    @apply bg-gradient-to-r from-cyan-300 via-violet-400 to-pink-400 bg-clip-text text-transparent;
+    background-size: 200% auto;
+  }
+  .btn-neon {
+    @apply relative inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-cyan-400 via-violet-500 to-pink-500 px-6 py-3 font-semibold text-white shadow-[0_0_30px_-4px_rgb(168_85_247/0.7)] transition duration-300 hover:scale-[1.03] hover:shadow-[0_0_44px_-2px_rgb(34_211_238/0.8)] active:scale-[0.98] disabled:pointer-events-none disabled:opacity-40;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-white/15 bg-white/5 px-5 py-3 font-medium text-white/90 transition hover:border-cyan-300/50 hover:bg-white/10 hover:text-white disabled:opacity-40;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-medium text-white/70;
+  }
+}
+
+::selection {
+  background: rgb(168 85 247 / 0.45);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}

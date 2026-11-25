@@ -1,6 +1,6 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { FREE_LIMIT, PAID_PLANS, type PaidPlanId, type PlanId } from "@/lib/billing/config";
+import { APP_ID, FREE_LIMIT, MAX_CALLS_PER_USE, PAID_PLANS, type PaidPlanId, type PlanId } from "@/lib/billing/config";
 import {
   aiAllowed, bearer, meHandler, orderHandler, startHandler, toAccount, verifyHandler, webhookHandler, type Deps,
 } from "@/lib/billing/handlers";
@@ -119,7 +119,7 @@ describe("free plan", () => {
     expect(await aiAllowed(deps, "tok-b", sessionId)).toBe(false);
     expect(await aiAllowed(deps, "tok-a", "not-a-session")).toBe(false);
     expect(await aiAllowed(deps, "", sessionId)).toBe(false);
-    for (let i = 1; i < 22; i++) await aiAllowed(deps, "tok-a", sessionId);
+    for (let i = 1; i < MAX_CALLS_PER_USE; i++) await aiAllowed(deps, "tok-a", sessionId);
     expect(await aiAllowed(deps, "tok-a", sessionId)).toBe(false);
   });
 });
@@ -129,8 +129,8 @@ describe("buying a plan", () => {
     expect((await orderHandler(deps, "tok-a", { plan: "lifetime" })).status).toBe(400);
     expect((await orderHandler(deps, "", { plan: "day" })).status).toBe(401);
     const r = await orderHandler(deps, "tok-a", { plan: "month" });
-    expect(r.body).toMatchObject({ amount: 4900, currency: "INR", keyId: "rzp_test_key" });
-    expect(deps.createOrder).toHaveBeenCalledWith(expect.objectContaining({ amount: 4900 }));
+    expect(r.body).toMatchObject({ amount: PAID_PLANS.month.amount, currency: "INR", keyId: "rzp_test_key" });
+    expect(deps.createOrder).toHaveBeenCalledWith(expect.objectContaining({ amount: PAID_PLANS.month.amount }));
   });
 
   it("switches the day pass on after a verified payment", async () => {
@@ -154,9 +154,9 @@ describe("buying a plan", () => {
 
   it("extends an active plan when bought again, and expires it later", async () => {
     await buy("month");
-    const first = store.ents.get("user-a:interview")!.expiresAt!;
+    const first = store.ents.get(`user-a:${APP_ID}`)!.expiresAt!;
     await buy("month");
-    const second = store.ents.get("user-a:interview")!.expiresAt!;
+    const second = store.ents.get(`user-a:${APP_ID}`)!.expiresAt!;
     expect(Date.parse(second) - Date.parse(first)).toBe(30 * 864e5);
     store.now += 61 * 864e5;
     expect((await meHandler(deps, "tok-a")).body).toMatchObject({ account: { plan: "free", paid: false } });
@@ -169,7 +169,7 @@ describe("webhook", () => {
 
   it("activates the plan even if the browser never called verify", async () => {
     const { orderId } = (await orderHandler(deps, "tok-b", { plan: "day" })).body as { orderId: string };
-    const body = event(orderId, 900);
+    const body = event(orderId, PAID_PLANS.day.amount);
     const r = await webhookHandler(deps, body, sign(body, WEBHOOK));
     expect(r.body).toEqual({ ok: true, activated: true });
     expect((await meHandler(deps, "tok-b")).body).toMatchObject({ account: { plan: "day" } });
@@ -179,7 +179,7 @@ describe("webhook", () => {
 
   it("rejects bad signatures and wrong amounts, and ignores other events", async () => {
     const { orderId } = (await orderHandler(deps, "tok-b", { plan: "month" })).body as { orderId: string };
-    expect((await webhookHandler(deps, event(orderId, 4900), "nope")).status).toBe(400);
+    expect((await webhookHandler(deps, event(orderId, PAID_PLANS.month.amount), "nope")).status).toBe(400);
     const cheap = event(orderId, 100);
     expect((await webhookHandler(deps, cheap, sign(cheap, WEBHOOK))).status).toBe(400);
     const other = JSON.stringify({ event: "refund.created" });

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { APP_NAME, FREE_LIMIT, PAID_PLANS, rupees, USE_NAME, type PaidPlanId } from "@/lib/billing/config";
+import { APP_NAME, PAID_PLANS, PLAN_FEATURES as FEATURES, PRICING_COPY as COPY, rupees, USE_NAME, type PaidPlanId } from "@/lib/billing/config";
 import { useAccount } from "./AccountProvider";
 
 interface RazorpayResponse {
@@ -26,30 +26,6 @@ function loadCheckout(): Promise<void> {
     document.body.appendChild(s);
   });
 }
-
-const FEATURES: Record<"free" | PaidPlanId, string[]> = {
-  free: [
-    `${FREE_LIMIT} ${USE_NAME.many} with Claude`,
-    "Unlimited practice on the demo question bank",
-    "Up to 5 questions per interview",
-    "Frontend, Android, Data Analyst and HR roles",
-    "Report card and progress dashboard",
-  ],
-  day: [
-    `Up to ${PAID_PLANS.day.limit} ${USE_NAME.many} in 24 hours`,
-    "All 6 roles, including Backend and Product Manager",
-    "Up to 10 questions per interview",
-    "Adaptive follow-up questions and model answers",
-    "Perfect the night before an interview",
-  ],
-  month: [
-    `Up to ${PAID_PLANS.month.limit} ${USE_NAME.many} in 30 days`,
-    "All 6 roles, including Backend and Product Manager",
-    "Up to 10 questions per interview",
-    "Adaptive follow-up questions and model answers",
-    "Best value for placement season",
-  ],
-};
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -106,7 +82,7 @@ export function BillingPricing({ compact = false }: { compact?: boolean }) {
             const body = await v.json();
             if (!v.ok) throw new Error(body.error);
             await acc.refresh();
-            setMsg({ kind: "ok", text: `${plan.name} is active until ${fmtDate(body.account.expiresAt)}. Enjoy your interviews!` });
+            setMsg({ kind: "ok", text: `${plan.name} is active until ${fmtDate(body.account.expiresAt)}. Enjoy!` });
           } catch {
             // The Razorpay webhook activates the plan even if this call fails.
             setMsg({ kind: "info", text: "Payment received. Your plan will switch on within a minute; refresh this page if it doesn't." });
@@ -130,22 +106,20 @@ export function BillingPricing({ compact = false }: { compact?: boolean }) {
 
   const current = acc.account;
   const cards: { id: "free" | PaidPlanId; name: string; price: string; per: string; sub: string; highlight?: boolean }[] = [
-    { id: "free", name: "Free", price: "₹0", per: "", sub: "Try the AI interviewer" },
-    { id: "day", name: PAID_PLANS.day.name, price: rupees(PAID_PLANS.day.amount), per: "/ 24 hours", sub: "One focused day of practice" },
-    { id: "month", name: PAID_PLANS.month.name, price: rupees(PAID_PLANS.month.amount), per: "/ 30 days", sub: "For serious job seekers", highlight: true },
+    { id: "free", name: "Free", price: "₹0", per: "", sub: COPY.free },
+    { id: "day", name: PAID_PLANS.day.name, price: rupees(PAID_PLANS.day.amount), per: `/ ${PAID_PLANS.day.durationLabel}`, sub: COPY.day },
+    { id: "month", name: PAID_PLANS.month.name, price: rupees(PAID_PLANS.month.amount), per: `/ ${PAID_PLANS.month.durationLabel}`, sub: COPY.month, highlight: true },
   ];
 
   return (
     <div className={compact ? "" : "mx-auto max-w-6xl px-5 py-16"}>
       {!compact && (
         <div className="animate-fade-up mb-10 text-center">
-          <p className="chip mx-auto mb-4">Pay by UPI · no auto-renewal</p>
+          <p className="chip mx-auto mb-4">{COPY.chip}</p>
           <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-5xl">
-            Practise for less than <span className="neon-text">a cup of chai</span>
+            {COPY.title} <span className="neon-text">{COPY.titleAccent}</span>
           </h1>
-          <p className="mx-auto mt-4 max-w-xl text-white/60">
-            Start free. When you need more, pay once with GPay, PhonePe, Paytm or any UPI app. Plans end on their own; nothing renews.
-          </p>
+          <p className="mx-auto mt-4 max-w-xl text-white/60">{COPY.sub}</p>
         </div>
       )}
 

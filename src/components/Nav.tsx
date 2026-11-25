@@ -4,6 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getPlan } from "@/lib/history";
+import { PAID_PLANS } from "@/lib/billing/config";
+import { useAccount } from "./AccountProvider";
 import type { Plan } from "@/lib/types";
 
 const LINKS = [
@@ -16,6 +18,7 @@ export function Nav() {
   const pathname = usePathname();
   const [plan, setPlanState] = useState<Plan>("free");
   const [open, setOpen] = useState(false);
+  const acc = useAccount();
 
   useEffect(() => {
     const sync = () => setPlanState(getPlan());
@@ -55,12 +58,36 @@ export function Nav() {
         </div>
 
         <div className="flex items-center gap-3">
-          <span
-            data-testid="plan-badge"
-            className={`chip ${plan === "pro" ? "border-amber-300/40 bg-amber-300/10 text-amber-200" : ""}`}
-          >
-            {plan === "pro" ? "★ Pro" : "Free plan"}
-          </span>
+          {acc.billing ? (
+            acc.account ? (
+              <>
+                <Link
+                  href="/pricing"
+                  data-testid="plan-badge"
+                  className={`chip ${acc.account.paid ? "border-amber-300/40 bg-amber-300/10 text-amber-200" : ""}`}
+                  title={acc.email ?? undefined}
+                >
+                  {acc.account.paid
+                    ? `★ ${PAID_PLANS[acc.account.plan as "day" | "month"].name} · ${acc.account.left} left`
+                    : `Free · ${acc.account.left} AI left`}
+                </Link>
+                <button className="hidden text-sm text-white/50 hover:text-white md:inline" onClick={() => void acc.signOut()}>
+                  Sign out
+                </button>
+              </>
+            ) : (
+              <button className="btn-ghost !px-4 !py-2 text-sm" onClick={() => void acc.signIn()} data-testid="sign-in">
+                Sign in<span className="hidden sm:inline">&nbsp;with Google</span>
+              </button>
+            )
+          ) : (
+            <span
+              data-testid="plan-badge"
+              className={`chip ${plan === "pro" ? "border-amber-300/40 bg-amber-300/10 text-amber-200" : ""}`}
+            >
+              {plan === "pro" ? "★ Pro" : "Free plan"}
+            </span>
+          )}
           <Link href="/interview" className="btn-neon hidden !px-4 !py-2 text-sm sm:inline-flex">
             Start interview
           </Link>
@@ -76,6 +103,11 @@ export function Nav() {
               {l.label}
             </Link>
           ))}
+          {acc.billing && acc.account && (
+            <button onClick={() => { setOpen(false); void acc.signOut(); }} className="block w-full rounded-lg px-3 py-3 text-left text-white/60 hover:bg-white/5">
+              Sign out ({acc.email})
+            </button>
+          )}
         </div>
       )}
     </header>

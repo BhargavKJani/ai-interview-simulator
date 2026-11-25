@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Space_Grotesk } from "next/font/google";
 import { Nav } from "@/components/Nav";
 import { Backdrop } from "@/components/Backdrop";
+import { AccountProvider } from "@/components/AccountProvider";
 import "./globals.css";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
@@ -20,12 +21,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}>
       <body className="relative min-h-full flex flex-col overflow-x-hidden">
-        <Backdrop />
-        <Nav />
-        <main className="relative z-10 flex-1">{children}</main>
-        <footer className="relative z-10 border-t border-white/5 py-8 text-center text-sm text-white/40">
-          © {2026} InterviewAI · Built with Next.js & Claude · Practise smarter, get hired faster.
-        </footer>
+        <AccountProvider>
+          <Backdrop />
+          <Nav />
+          <main className="relative z-10 flex-1">{children}</main>
+          <footer className="relative z-10 border-t border-white/5 py-8 text-center text-sm text-white/40">
+            © {2026} InterviewAI · Built with Next.js & Claude · Practise smarter, get hired faster.
+          </footer>
+        </AccountProvider>
       </body>
     </html>
   );

@@ -1,25 +1,33 @@
 import { aiEnabled, aiEvaluate, aiNextQuestion, MODEL } from "./ai";
+import { billingEnabled } from "./billing/config";
 import { isDifficulty, isRoleId, pickQuestions } from "./roles";
 import { evaluateLocally } from "./scoring";
 import type { Evaluation, Question } from "./types";
 
 /**
  * Framework-agnostic handlers so they can be unit-tested without Next.js.
- * Every path degrades to the deterministic demo engine when no API key is set
- * or the AI call fails.
+ * Every path degrades to the deterministic demo engine when no API key is set,
+ * the caller has no paid/free AI session (`opts.ai === false`), or the AI call fails.
  */
+
+export interface AiOptions {
+  /** Whether this request may use Claude. Routes decide this from the user's plan; defaults to "a key is set". */
+  ai?: boolean;
+}
 
 export type HandlerResult<T> = { status: number; body: T | { error: string } };
 
 const MAX_ANSWER = 8000;
 const MAX_QUESTIONS = 10;
 
+/** AI is available when a key is set and payments are configured (so only signed-in users with a plan can use it). */
 export function statusHandler() {
-  const ai = aiEnabled();
-  return { status: 200, body: { ai, mode: ai ? "ai" : "demo", model: ai ? MODEL : null } };
+  const billing = billingEnabled();
+  const ai = aiEnabled() && billing;
+  return { status: 200, body: { ai, mode: ai ? "ai" : "demo", model: ai ? MODEL : null, billing } };
 }
 
-export async function questionHandler(input: unknown): Promise<HandlerResult<{ question: Question; mode: "ai" | "demo" }>> {
+export async function questionHandler(input: unknown, opts: AiOptions = {}): Promise<HandlerResult<{ question: Question; mode: "ai" | "demo" }>> {
   const b = (input ?? {}) as Record<string, unknown>;
   if (!isRoleId(b.role) || !isDifficulty(b.difficulty)) return { status: 400, body: { error: "Invalid role or difficulty" } };
   const index = Number.isInteger(b.index) ? Math.min(Math.max(0, b.index as number), MAX_QUESTIONS - 1) : 0;
@@ -30,7 +38,7 @@ export async function questionHandler(input: unknown): Promise<HandlerResult<{ q
         .slice(0, MAX_QUESTIONS)
     : [];
 
-  if (aiEnabled()) {
+  if (opts.ai ?? aiEnabled()) {
     try {
       const q = await aiNextQuestion(b.role, b.difficulty, previous, index);
       if (q) return { status: 200, body: { question: q, mode: "ai" } };
@@ -47,7 +55,7 @@ function isQuestion(q: unknown): q is Question {
   return !!o && typeof o.text === "string" && o.text.length < 1000 && Array.isArray(o.keywords) && typeof o.hint === "string";
 }
 
-export async function evaluateHandler(input: unknown): Promise<HandlerResult<{ evaluation: Evaluation; mode: "ai" | "demo" }>> {
+export async function evaluateHandler(input: unknown, opts: AiOptions = {}): Promise<HandlerResult<{ evaluation: Evaluation; mode: "ai" | "demo" }>> {
   const b = (input ?? {}) as Record<string, unknown>;
   if (!isRoleId(b.role) || !isDifficulty(b.difficulty)) return { status: 400, body: { error: "Invalid role or difficulty" } };
   if (!isQuestion(b.question)) return { status: 400, body: { error: "Invalid question" } };
@@ -62,7 +70,7 @@ export async function evaluateHandler(input: unknown): Promise<HandlerResult<{ e
 
   if (!answer) return { status: 200, body: { evaluation: evaluateLocally(question, "", b.difficulty), mode: "demo" } };
 
-  if (aiEnabled()) {
+  if (opts.ai ?? aiEnabled()) {
     try {
       return { status: 200, body: { evaluation: await aiEvaluate(b.role, b.difficulty, question, answer), mode: "ai" } };
     } catch (err) {

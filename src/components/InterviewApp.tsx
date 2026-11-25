@@ -8,20 +8,25 @@ import {
 import { DIFFICULTIES, getRole, ROLES } from "@/lib/roles";
 import type { Difficulty, Evaluation, InterviewSession, Plan, Question, RoleId, Turn } from "@/lib/types";
 import { useSpeech } from "@/lib/useSpeech";
+import { USE_NAME } from "@/lib/billing/config";
+import { useAccount } from "./AccountProvider";
 import { ScoreBars, ScoreRing } from "./Charts";
 import { ReportCardView } from "./ReportCardView";
 
 type Phase = "setup" | "interview" | "report";
 
-async function postJSON<T>(url: string, body: unknown): Promise<T> {
-  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+async function postJSON<T>(url: string, body: unknown, token = ""): Promise<T> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
   if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? `Request failed (${res.status})`);
   return res.json();
 }
 
 export function InterviewApp() {
   const [phase, setPhase] = useState<Phase>("setup");
-  const [plan, setPlan] = useState<Plan>("free");
+  const acc = useAccount();
+  const [localPlan, setPlan] = useState<Plan>("free");
   const [remaining, setRemaining] = useState<number>(FREE_DAILY_LIMIT);
   const [aiMode, setAiMode] = useState<boolean | null>(null);
 
@@ -44,6 +49,9 @@ export function InterviewApp() {
   const startedAtRef = useRef<string>("");
   const usedVoiceRef = useRef(false);
   const modeRef = useRef<"ai" | "demo">("demo");
+  /** AI session from /api/billing/start; null means this interview runs on the free demo engine. */
+  const aiSessionRef = useRef<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const speech = useSpeech();
 
@@ -62,21 +70,28 @@ export function InterviewApp() {
     return () => clearInterval(t);
   }, [phase, evaluation, question]);
 
+  // With payments on, the server decides the plan; otherwise the old local demo plan applies.
+  const billing = acc.billing;
+  const plan: Plan = billing ? (acc.account?.paid ? "pro" : "free") : localPlan;
+  const aiLeft = acc.account?.left ?? 0;
+  const willUseAi = billing && acc.ai && !!acc.account && aiLeft > 0;
+
   const maxQuestions = plan === "pro" ? PRO_MAX_QUESTIONS : FREE_MAX_QUESTIONS;
   const counts = plan === "pro" ? [3, 5, 7, 10] : [3, 5];
   const roleInfo = getRole(role)!;
   const roleLocked = roleInfo.pro && plan !== "pro";
-  const canStart = remaining > 0 && !roleLocked;
+  const canStart = (billing || remaining > 0) && !roleLocked;
 
   const loadQuestion = useCallback(
     async (i: number, prev: Turn[], s: number) => {
       setLoading(true);
       setError(null);
       try {
+        const sessionId = aiSessionRef.current;
         const data = await postJSON<{ question: Question; mode: "ai" | "demo" }>("/api/interview/question", {
-          role, difficulty, index: i, seed: s,
+          role, difficulty, index: i, seed: s, session: sessionId ?? undefined,
           previous: prev.map((t) => ({ question: t.question.text, answer: t.answer })),
-        });
+        }, sessionId ? await acc.token() : "");
         setQuestion(data.question);
         setAnswer("");
         setEvaluation(null);
@@ -90,7 +105,7 @@ export function InterviewApp() {
         setLoading(false);
       }
     },
-    [role, difficulty, voice, speech],
+    [role, difficulty, voice, speech, acc],
   );
 
   const start = async () => {
@@ -100,6 +115,17 @@ export function InterviewApp() {
     setIndex(0);
     setSession(null);
     modeRef.current = "demo";
+    aiSessionRef.current = null;
+    setNotice(null);
+    if (willUseAi) {
+      try {
+        const r = await postJSON<{ sessionId: string }>("/api/billing/start", {}, await acc.token());
+        aiSessionRef.current = r.sessionId;
+      } catch (e) {
+        setNotice(`${(e as Error).message} This interview uses the free demo engine.`);
+      }
+      void acc.refresh();
+    }
     startedAtRef.current = new Date().toISOString();
     setPhase("interview");
     await loadQuestion(0, [], s);
@@ -112,9 +138,10 @@ export function InterviewApp() {
     setLoading(true);
     setError(null);
     try {
+      const sessionId = aiSessionRef.current;
       const data = await postJSON<{ evaluation: Evaluation; mode: "ai" | "demo" }>("/api/interview/evaluate", {
-        role, difficulty, question, answer,
-      });
+        role, difficulty, question, answer, session: sessionId ?? undefined,
+      }, sessionId ? await acc.token() : "");
       if (data.mode === "ai") modeRef.current = "ai";
       setEvaluation(data.evaluation);
       setTurns((prev) => [
@@ -147,6 +174,7 @@ export function InterviewApp() {
     };
     const history = saveSession(s);
     setRemaining(canStartInterview(plan, history).remaining);
+    if (billing) void acc.refresh();
     setSession(s);
     setPhase("report");
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -166,16 +194,40 @@ export function InterviewApp() {
         <div className="animate-fade-up mb-10 flex flex-col items-start justify-between gap-4 md:flex-row md:items-end">
           <div>
             <p className="chip mb-3">
-              {aiMode === null ? "Checking AI…" : aiMode ? "✨ Live AI interviewer (Claude)" : "⚡ Demo mode — no API key needed"}
+              {billing
+                ? willUseAi
+                  ? "✨ Live AI interviewer (Claude)"
+                  : !acc.ai
+                    ? "⚡ Demo mode"
+                    : acc.account
+                      ? `⚡ Demo mode · no ${USE_NAME.many} left`
+                      : `⚡ Demo mode · sign in for 3 free ${USE_NAME.many}`
+                : aiMode === null ? "Checking AI…" : aiMode ? "✨ Live AI interviewer (Claude)" : "⚡ Demo mode — no API key needed"}
             </p>
             <h1 className="font-[family-name:var(--font-display)] text-4xl font-bold sm:text-5xl">
               Set up your <span className="neon-text">mock interview</span>
             </h1>
             <p className="mt-3 text-white/60">Pick a role and level. Your AI interviewer asks one question at a time.</p>
           </div>
-          <div className="glass px-4 py-3 text-sm text-white/70" data-testid="quota">
-            {plan === "pro" ? "★ Pro — unlimited interviews" : `${remaining}/${FREE_DAILY_LIMIT} free interviews left today`}
-          </div>
+          {billing ? (
+            <div className="glass px-4 py-3 text-sm text-white/70" data-testid="quota">
+              {!acc.account ? (
+                <button className="text-cyan-300 hover:underline" onClick={() => void acc.signIn()}>
+                  Sign in with Google for 3 free {USE_NAME.many} →
+                </button>
+              ) : (
+                <>
+                  {acc.account.paid ? "★ " : ""}
+                  {aiLeft}/{acc.account.limit} {USE_NAME.many} left
+                  {aiLeft === 0 && <> · <Link href="/pricing" className="text-cyan-300 hover:underline">Get a plan from ₹9</Link></>}
+                </>
+              )}
+            </div>
+          ) : (
+            <div className="glass px-4 py-3 text-sm text-white/70" data-testid="quota">
+              {plan === "pro" ? "★ Pro — unlimited interviews" : `${remaining}/${FREE_DAILY_LIMIT} free interviews left today`}
+            </div>
+          )}
         </div>
 
         <section className="mb-10">
@@ -353,6 +405,7 @@ export function InterviewApp() {
       </div>
 
       {error && <div className="mt-4 rounded-xl border border-pink-400/30 bg-pink-500/10 p-3 text-sm text-pink-200">{error}</div>}
+      {notice && <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">{notice} <Link href="/pricing" className="underline">See plans</Link></div>}
       {speech.error && <div className="mt-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-200">{speech.error}</div>}
 
       {!evaluation ? (

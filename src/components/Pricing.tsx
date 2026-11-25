@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import { FREE_DAILY_LIMIT, FREE_MAX_QUESTIONS, getPlan, PRO_MAX_QUESTIONS, PRO_PRICE_INR, setPlan } from "@/lib/history";
 import type { Plan } from "@/lib/types";
+import { useAccount } from "./AccountProvider";
+import { BillingPricing } from "./BillingPricing";
 
 const FREE_FEATURES = [
   `${FREE_DAILY_LIMIT} mock interviews per day`,
@@ -23,6 +25,7 @@ const PRO_FEATURES = [
 ];
 
 export function Pricing({ compact = false }: { compact?: boolean }) {
+  const { billing } = useAccount();
   const [plan, setPlanState] = useState<Plan>("free");
   const [yearly, setYearly] = useState(false);
   const [checkout, setCheckout] = useState(false);
@@ -39,6 +42,9 @@ export function Pricing({ compact = false }: { compact?: boolean }) {
   };
 
   const yearlyPrice = Math.round(PRO_PRICE_INR * 12 * 0.75);
+
+  // Real UPI payments when Razorpay + Supabase are configured; otherwise the original demo checkout.
+  if (billing) return <BillingPricing compact={compact} />;
 
   return (
     <div className={compact ? "" : "mx-auto max-w-5xl px-5 py-16"}>

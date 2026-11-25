@@ -3,7 +3,8 @@ import { getRole } from "./roles";
 import { evaluateLocally, normaliseEvaluation } from "./scoring";
 import type { Difficulty, Evaluation, Question, RoleId } from "./types";
 
-export const MODEL = "claude-sonnet-5-5";
+// Haiku 5.5 keeps an interview's AI cost under ₹0.50, which makes the ₹9 / ₹49 plans profitable.
+export const MODEL = "claude-haiku-5-5";
 
 export function aiEnabled(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY?.trim());

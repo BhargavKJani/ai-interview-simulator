@@ -16,7 +16,7 @@ describe("demo mode (no API key)", () => {
   afterEach(() => { vi.unstubAllEnvs(); create.mockReset(); });
 
   it("reports demo status", () => {
-    expect(statusHandler().body).toEqual({ ai: false, mode: "demo", model: null });
+    expect(statusHandler().body).toEqual({ ai: false, mode: "demo", model: null, billing: false });
   });
 
   it("rejects invalid input", async () => {
@@ -56,7 +56,7 @@ describe("AI mode (Claude)", () => {
     expect(body.mode).toBe("ai");
     expect(body.evaluation.feedback).toBe("Great");
     expect(body.evaluation.overall).toBe(91);
-    expect(create.mock.calls[0][0].model).toBe("claude-sonnet-5-5");
+    expect(create.mock.calls[0][0].model).toBe("claude-haiku-5-5");
   });
 
   it("generates adaptive questions", async () => {
